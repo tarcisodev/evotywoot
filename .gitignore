@@ -1,0 +1,7 @@
+*.env
+*.env.evolution
+*.log
+*.txt
+*.csv
+*.json
+*.xml
