@@ -131,12 +131,13 @@ services:
   # Evolution Redis
   redis:
     image: redis:latest
+    env_file: ../chatwoot/.env
     networks:
       - typebot-network
     container_name: redis
-    command: >
-      redis-server --port 6379 --appendonly yes
+    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
     volumes:
       - evolution_redis:/data
     ports:
       - 6379:6379
+    restart: always
