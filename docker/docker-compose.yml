@@ -81,6 +81,6 @@ services:
     env_file:
       - .env.evolution
     volumes:
-      - evolution-instances:/evolution/instances
+      - /evolution-instances:/evolution/instances
     extra_hosts:
       - "host.docker.internal:host-gateway"
