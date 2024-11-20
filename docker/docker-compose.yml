@@ -1,30 +1,16 @@
 version: '3.3'
 
-volumes:
-  db-data:
-  evolution-instances:
-  pgadmin_data:
-  evolution_redis:
-  chatwoot_storage:
-
-networks:
-  typebot-network:
-    driver: bridge
-
 services:
-  # region Chatwoot
   base: &base
     image: chatwoot/chatwoot:latest
-    env_file: ../chatwoot/.env
+    env_file: .env
     volumes:
-      - chatwoot_storage:/app/storage
-    networks:
-      - typebot-network
+      - /data/storage:/app/storage
 
   rails:
     <<: *base
     depends_on:
-      - postgres-db
+      - postgres
       - redis
     ports:
       - '127.0.0.1:3000:3000'
@@ -35,13 +21,11 @@ services:
     entrypoint: docker/entrypoints/rails.sh
     command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
     restart: always
-    networks:
-      - typebot-network
 
   sidekiq:
     <<: *base
     depends_on:
-      - postgres-db
+      - postgres
       - redis
     environment:
       - NODE_ENV=production
@@ -49,95 +33,54 @@ services:
       - INSTALLATION_ENV=docker
     command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
     restart: always
-    networks:
-      - typebot-network
-  # endregion
 
-  # Banco de Dados PostgreSQL para o Typebot
-  postgres-db:
-    image: postgres:16
+  postgres:
+    image: postgres:12
     restart: always
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=typebot
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=typebot
-    networks:
-      - typebot-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # PgAdmin para gerenciar o banco de dados PostgreSQL do Evolution API
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=contato@tarciso.dev
-      - PGADMIN_DEFAULT_PASSWORD=123456
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
     ports:
-      - 4001:80 # Alterado para evitar conflito
-    networks:
-      - typebot-network
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - /data/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=chatwoot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_password
 
-  # Builder do Typebot
+  redis:
+    image: redis:alpine
+    restart: always
+    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
+    env_file: .env
+    volumes:
+      - /data/redis:/data
+    ports:
+      - '127.0.0.1:6379:6379'
+
   typebot-builder:
     image: baptistearno/typebot-builder:latest
     restart: always
-    depends_on:
-      postgres-db:
-        condition: service_healthy
     ports:
-      - '8081:3000' # Porta ajustada para evitar conflitos
+      - "127.0.0.1:8080:3000"
     extra_hosts:
-      - 'host.docker.internal:host-gateway'
-    env_file: ../typebot/.env
-    networks:
-      - typebot-network
+      - "host.docker.internal:host-gateway"
+    env_file: .env.typebot
 
-  # Viewer do Typebot
   typebot-viewer:
     image: baptistearno/typebot-viewer:latest
-    depends_on:
-      postgres-db:
-        condition: service_healthy
     restart: always
     ports:
-      - '8082:3000'
-    env_file: ../typebot/.env
-    networks:
-      - typebot-network
-  
-  # Evolution API
+      - '127.0.0.1:8081:3000'
+    env_file: .env.typebot
+
   evolution-api:
     container_name: evolution_api
     image: atendai/evolution-api:v2.1.1
     restart: always
     ports:
-      - "8080:8080" # Porta padrão 8080
+      - "8082:8082"
     env_file:
-      - ../evolution/.env
+      - .env.evolution
     volumes:
       - evolution-instances:/evolution/instances
-    networks:
-      - typebot-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
-  
-  # Evolution Redis
-  redis:
-    image: redis:latest
-    env_file: ../chatwoot/.env
-    networks:
-      - typebot-network
-    container_name: redis
-    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
-    volumes:
-      - evolution_redis:/data
-    ports:
-      - 6379:6379
-    restart: always
