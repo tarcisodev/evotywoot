@@ -24,7 +24,7 @@ services:
   rails:
     <<: *chatwoot
     depends_on:
-      - typebot-db
+      - postgres-db
       - redis
     ports:
       - '127.0.0.1:3000:3000'
@@ -41,7 +41,7 @@ services:
   sidekiq:
     <<: *chatwoot
     depends_on:
-      - postgres
+      - postgres-db
       - redis
     environment:
       - NODE_ENV=production
@@ -54,7 +54,7 @@ services:
   # endregion
 
   # Banco de Dados PostgreSQL para o Typebot
-  typebot-db:
+  postgres-db:
     image: postgres:16
     restart: always
     volumes:
@@ -89,7 +89,7 @@ services:
     image: baptistearno/typebot-builder:latest
     restart: always
     depends_on:
-      typebot-db:
+      postgres-db:
         condition: service_healthy
     ports:
       - '8081:3000' # Porta ajustada para evitar conflitos
@@ -103,7 +103,7 @@ services:
   typebot-viewer:
     image: baptistearno/typebot-viewer:latest
     depends_on:
-      typebot-db:
+      postgres-db:
         condition: service_healthy
     restart: always
     ports:
