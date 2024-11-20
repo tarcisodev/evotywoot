@@ -1,0 +1,32 @@
+version: '3.3'
+
+services:
+  typebot-viewer:
+    image: baptistearno/typebot-viewer:latest
+    restart: always
+    ports:
+      - '127.0.0.1:8082:3000'
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/typebot
+    depends_on:
+      - postgres
+
+  typebot-builder:
+    image: baptistearno/typebot-builder:latest
+    restart: always
+    ports:
+      - '127.0.0.1:8081:3000'
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/typebot
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:13-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_password
+      - POSTGRES_DB=typebot
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
